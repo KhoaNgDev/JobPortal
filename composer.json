@@ -13,6 +13,7 @@
         "laravel/sanctum": "^3.3",
         "laravel/tinker": "^2.8",
         "laraveldaily/laravel-invoices": "3.3.1",
+        "league/tactician": "^1.1",
         "php-flasher/flasher-notyf-laravel": "^1.15",
         "razorpay/razorpay": "2.*",
         "spatie/laravel-permission": "^6.3",

@@ -10,6 +10,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class Skill extends Model
 {
     use HasFactory, Sluggable;
+    protected $fillable = [
+        'name',
+    ];
 
     public function sluggable(): array
     {

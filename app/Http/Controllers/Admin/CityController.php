@@ -12,106 +12,112 @@ use App\Services\Notify;
 use App\Traits\Searchable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Response;
+use App\Iterators\CityIterator;
+
 
 class CityController extends Controller
 {
     use Searchable;
 
-    function __construct()
+    public function __construct()
     {
         $this->middleware(['permission:job locations']);
     }
-    
-    /**
-     * Display a listing of the resource.
-     */
-    public function index() : View
-    {
-        $query = City::query();
-        $query->with(['country', 'state']);
-        $this->search($query, ['name']);
-        $cities = $query->orderBy('id', 'DESC')->paginate(20);
 
-        return view('admin.location.city.index', compact('cities'));
+    /**
+     * Hiển thị danh sách thành phố.
+     */
+    public function index(): View
+    {
+        $query = City::with(['country', 'state'])->latest('id')->get();
+
+        $cityIterator = new CityIterator($query->toArray());
+
+        return view('admin.location.city.index', compact('cityIterator'));
     }
 
     /**
-     * Show the form for creating a new resource.
+     * Hiển thị form tạo thành phố mới.
      */
-    public function create() : View
+    public function create(): View
     {
         $countries = Country::all();
         return view('admin.location.city.create', compact('countries'));
     }
 
     /**
-     * Store a newly created resource in storage.
+     * Lưu thành phố mới vào database.
      */
-    public function store(Request $request) : RedirectResponse
+    public function store(Request $request): RedirectResponse
     {
-        $request->validate([
-            'country' => ['required', 'integer'],
-            'state' => ['required', 'integer'],
-            'city' => ['required', 'string', 'max:255']
+        $validated = $request->validate([
+            'country' => ['required', 'integer', 'exists:countries,id'],
+            'state'   => ['required', 'integer', 'exists:states,id'],
+            'city'    => ['required', 'string', 'max:255']
         ]);
 
-        $city = new City();
-        $city->name = $request->city;
-        $city->state_id = $request->state;
-        $city->country_id = $request->country;
-        $city->save();
+        City::create([
+            'name'       => $validated['city'],
+            'state_id'   => $validated['state'],
+            'country_id' => $validated['country'],
+        ]);
 
         Notify::createdNotification();
 
-        return to_route('admin.cities.index');
+        return to_route('admin.cities.index')->with('success', 'Thành phố đã được tạo thành công.');
     }
 
     /**
-     * Show the form for editing the specified resource.
+     * Hiển thị form chỉnh sửa thành phố.
      */
-    public function edit(string $id)
+    public function edit(City $city): View
     {
-        $city = City::findOrFail($id);
+        $this->authorize('update', $city);
+
         $countries = Country::all();
         $states = State::where('country_id', $city->country_id)->get();
+
         return view('admin.location.city.edit', compact('countries', 'city', 'states'));
     }
 
     /**
-     * Update the specified resource in storage.
+     * Cập nhật thông tin thành phố.
      */
-    public function update(Request $request, string $id) : RedirectResponse
+    public function update(Request $request, City $city): RedirectResponse
     {
-        $request->validate([
-            'country' => ['required', 'integer'],
-            'state' => ['required', 'integer'],
-            'city' => ['required', 'string', 'max:255']
+        $this->authorize('update', $city);
+
+        $validated = $request->validate([
+            'country' => ['required', 'integer', 'exists:countries,id'],
+            'state'   => ['required', 'integer', 'exists:states,id'],
+            'city'    => ['required', 'string', 'max:255']
         ]);
 
-        $city = City::findOrFail($id);
-        $city->name = $request->city;
-        $city->state_id = $request->state;
-        $city->country_id = $request->country;
-        $city->save();
+        $city->update([
+            'name'       => $validated['city'],
+            'state_id'   => $validated['state'],
+            'country_id' => $validated['country'],
+        ]);
 
         Notify::updatedNotification();
 
-        return to_route('admin.cities.index');
+        return to_route('admin.cities.index')->with('success', 'Thành phố đã được cập nhật.');
     }
 
     /**
-     * Remove the specified resource from storage.
+     * Xóa thành phố.
      */
-    public function destroy(string $id) : Response
+    public function destroy(City $city): Response
     {
+        $this->authorize('delete', $city);
+
         try {
-            City::findOrFail($id)->delete();
+            $city->delete();
             Notify::deletedNotification();
             return response(['message' => 'success'], 200);
-
-        }catch(\Exception $e) {
-            logger($e);
-            return response(['message' => 'Something Went Wrong Please Try Again!'], 500);
+        } catch (\Throwable $e) {
+            logger()->error('Lỗi khi xóa thành phố: ' . $e->getMessage());
+            return response(['message' => 'Lỗi! Không thể xóa thành phố.'], 500);
         }
     }
 }

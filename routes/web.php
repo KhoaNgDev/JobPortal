@@ -26,6 +26,7 @@ use App\Http\Controllers\Frontend\PricingPageController;
 use App\Http\Controllers\ProfileController;
 use App\Models\CandidateExperience;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\UserController;
 
 /*
 |--------------------------------------------------------------------------
@@ -37,6 +38,8 @@ use Illuminate\Support\Facades\Route;
 | be assigned to the "web" middleware group. Make something great!
 |
 */
+Route::get('/user-role', [UserController::class, 'getUserRole']);
+Route::resource('users', UserController::class);
 
 Route::get('/', [HomeController::class, 'index'])->name('home');
 
